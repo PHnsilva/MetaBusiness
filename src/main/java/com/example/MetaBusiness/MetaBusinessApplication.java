@@ -1,4 +1,4 @@
-package com.example.MetaBusiness;
+package com.example.metabusiness;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
