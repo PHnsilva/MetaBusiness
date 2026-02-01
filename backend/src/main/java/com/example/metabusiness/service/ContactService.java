@@ -10,13 +10,25 @@ import java.util.List;
 public class ContactService {
 
     private final ContactRepository repository;
+    private final WhatsAppService whatsappService;
 
-    public ContactService(ContactRepository repository) {
+    public ContactService(ContactRepository repository,
+                          WhatsAppService whatsappService) {
         this.repository = repository;
+        this.whatsappService = whatsappService;
     }
 
     public Contact save(Contact contact) {
-        return repository.save(contact);
+
+        Contact saved = repository.save(contact);
+
+        // Dispara WhatsApp após salvar
+        whatsappService.sendWelcomeMessage(
+                contact.getPhone(),
+                contact.getName()
+        );
+
+        return saved;
     }
 
     public List<Contact> findAll() {
