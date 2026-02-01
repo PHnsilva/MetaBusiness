@@ -6,9 +6,11 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/contacts")
-@CrossOrigin(origins = "http://localhost:3000") // ajuste para seu front
+@CrossOrigin(origins = "http://localhost:5173")
 public class ContactController {
 
     private final ContactService service;
@@ -19,7 +21,11 @@ public class ContactController {
 
     @PostMapping
     public ResponseEntity<Contact> create(@Valid @RequestBody Contact contact) {
-        Contact saved = service.save(contact);
-        return ResponseEntity.ok(saved);
+        return ResponseEntity.ok(service.save(contact));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<Contact>> findAll() {
+        return ResponseEntity.ok(service.findAll());
     }
 }

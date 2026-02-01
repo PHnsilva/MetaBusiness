@@ -4,6 +4,8 @@ import com.example.metabusiness.model.Contact;
 import com.example.metabusiness.repository.ContactRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class ContactService {
 
@@ -15,5 +17,9 @@ public class ContactService {
 
     public Contact save(Contact contact) {
         return repository.save(contact);
+    }
+
+    public List<Contact> findAll() {
+        return repository.findAll();
     }
 }
