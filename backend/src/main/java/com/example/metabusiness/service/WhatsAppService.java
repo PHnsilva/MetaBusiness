@@ -29,13 +29,12 @@ public class WhatsAppService {
     @Value("${meta.whatsapp.version:v19.0}")
     private String version;
 
-    // Timeout configurável via SimpleClientHttpRequestFactory (evita hangs)
     private final RestTemplate restTemplate;
 
     public WhatsAppService() {
         SimpleClientHttpRequestFactory f = new SimpleClientHttpRequestFactory();
-        f.setConnectTimeout(5000); // ms
-        f.setReadTimeout(10000); // ms
+        f.setConnectTimeout(5000);
+        f.setReadTimeout(10000);
         this.restTemplate = new RestTemplate(f);
     }
 
@@ -43,9 +42,6 @@ public class WhatsAppService {
         return token != null && !token.isBlank() && phoneId != null && !phoneId.isBlank();
     }
 
-    /**
-     * Envia uma mensagem de texto simples (resposta imediata).
-     */
     public void sendTextMessage(String phone, String bodyText) {
         if (!configured()) {
             log.warn("[WhatsAppService] Não configurado (token/phoneId ausentes). Ignorando envio para {}", phone);
@@ -66,7 +62,6 @@ public class WhatsAppService {
         );
 
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
-
         try {
             ResponseEntity<String> resp = restTemplate.postForEntity(url, request, String.class);
             log.info("[WhatsAppService] sendTextMessage -> status={} body={}", resp.getStatusCodeValue(), resp.getBody());
@@ -75,13 +70,6 @@ public class WhatsAppService {
         }
     }
 
-    /**
-     * Envia um template. params é um Map com chaves por ordem (param1,param2...) ou qualquer ordem;
-     * os valores serão colocados como parâmetros de body (type=text).
-     *
-     * Exemplo de uso:
-     * sendTemplate("551199999", "meu_template", Map.of("1", "João", "2", "12/02"));
-     */
     public void sendTemplate(String phone, String templateName, Map<String, String> params) {
         if (!configured()) {
             log.warn("[WhatsAppService] sendTemplate SKIPPED (not configured) for {}", phone);
@@ -94,10 +82,8 @@ public class WhatsAppService {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(token);
 
-        // Monta lista de parâmetros compatível com template body
         List<Map<String, Object>> parameters = new ArrayList<>();
         if (params != null && !params.isEmpty()) {
-            // ordena por chave numerica se for "1","2",...
             List<String> keys = new ArrayList<>(params.keySet());
             keys.sort(Comparator.comparingInt(k -> {
                 try { return Integer.parseInt(k.replaceAll("\\D", "")); } catch (Exception ex) { return Integer.MAX_VALUE; }
@@ -136,5 +122,13 @@ public class WhatsAppService {
         } catch (Exception e) {
             log.error("[WhatsAppService] Erro ao enviar template '{}' para {}: {}", templateName, phone, e.getMessage(), e);
         }
+    }
+
+    /**
+     * Compatibilidade com ContactService: envia boas-vindas (texto simples).
+     */
+    public void sendWelcomeMessage(String phone, String name) {
+        String text = "Olá " + (name != null ? name : "") + "! Seu contato foi cadastrado com sucesso.";
+        sendTextMessage(phone, text);
     }
 }
