@@ -6,9 +6,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 
-import java.util.Map;
+import java.util.*;
 
+/**
+ * Serviço mínimo para envio de mensagens via Graph API do WhatsApp (Meta).
+ * - Configure meta.whatsapp.token e meta.whatsapp.phone-id no application.properties/env.
+ * - Opcional: meta.whatsapp.version (por padrão v19.0).
+ */
 @Service
 public class WhatsAppService {
 
@@ -23,7 +29,15 @@ public class WhatsAppService {
     @Value("${meta.whatsapp.version:v19.0}")
     private String version;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    // Timeout configurável via SimpleClientHttpRequestFactory (evita hangs)
+    private final RestTemplate restTemplate;
+
+    public WhatsAppService() {
+        SimpleClientHttpRequestFactory f = new SimpleClientHttpRequestFactory();
+        f.setConnectTimeout(5000); // ms
+        f.setReadTimeout(10000); // ms
+        this.restTemplate = new RestTemplate(f);
+    }
 
     private boolean configured() {
         return token != null && !token.isBlank() && phoneId != null && !phoneId.isBlank();
@@ -45,43 +59,82 @@ public class WhatsAppService {
         headers.setBearerAuth(token);
 
         Map<String, Object> payload = Map.of(
-            "messaging_product", "whatsapp",
-            "to", phone,
-            "type", "text",
-            "text", Map.of("body", bodyText)
+                "messaging_product", "whatsapp",
+                "to", phone,
+                "type", "text",
+                "text", Map.of("body", bodyText)
         );
 
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
 
         try {
             ResponseEntity<String> resp = restTemplate.postForEntity(url, request, String.class);
-            log.info("[WhatsAppService] sendTextMessage status={} body={}", resp.getStatusCodeValue(), resp.getBody());
+            log.info("[WhatsAppService] sendTextMessage -> status={} body={}", resp.getStatusCodeValue(), resp.getBody());
         } catch (Exception e) {
-            log.error("[WhatsAppService] Erro ao enviar text message para {}: {}", phone, e.getMessage());
+            log.error("[WhatsAppService] Erro ao enviar text message para {}: {}", phone, e.getMessage(), e);
         }
     }
 
     /**
-     * Envia uma mensagem de boas-vindas usando template ou texto conforme configuração.
-     * Aqui usamos template se você quiser — você pode alterar para template quando estiver pronto.
+     * Envia um template. params é um Map com chaves por ordem (param1,param2...) ou qualquer ordem;
+     * os valores serão colocados como parâmetros de body (type=text).
+     *
+     * Exemplo de uso:
+     * sendTemplate("551199999", "meu_template", Map.of("1", "João", "2", "12/02"));
      */
-    public void sendWelcomeMessage(String phone, String name) {
+    public void sendTemplate(String phone, String templateName, Map<String, String> params) {
         if (!configured()) {
-            log.warn("[WhatsAppService] sendWelcomeMessage SKIPPED (not configured) for {}", phone);
+            log.warn("[WhatsAppService] sendTemplate SKIPPED (not configured) for {}", phone);
             return;
         }
 
-        // exemplo: enviar template se você tiver template com {{1}}.
-        // Se preferir enviar texto simples, descomente a linha sendTextMessage abaixo.
-        try {
-            // Exemplo usando TEXT:
-            String text = "Olá " + (name != null ? name : "") + "! Seu contato foi cadastrado com sucesso.";
-            sendTextMessage(phone, text);
+        String url = "https://graph.facebook.com/" + version + "/" + phoneId + "/messages";
 
-            // Se quiser usar template (apenas se seu template aceitar 1 param),
-            // substitua por uma implementação de template como no exemplo anterior.
-        } catch (Exception ex) {
-            log.error("[WhatsAppService] Erro em sendWelcomeMessage para {}: {}", phone, ex.getMessage());
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(token);
+
+        // Monta lista de parâmetros compatível com template body
+        List<Map<String, Object>> parameters = new ArrayList<>();
+        if (params != null && !params.isEmpty()) {
+            // ordena por chave numerica se for "1","2",...
+            List<String> keys = new ArrayList<>(params.keySet());
+            keys.sort(Comparator.comparingInt(k -> {
+                try { return Integer.parseInt(k.replaceAll("\\D", "")); } catch (Exception ex) { return Integer.MAX_VALUE; }
+            }));
+            for (String k : keys) {
+                String v = params.get(k);
+                if (v == null) continue;
+                parameters.add(Map.of("type", "text", "text", v));
+            }
+        }
+
+        Map<String, Object> templateMap = new HashMap<>();
+        templateMap.put("name", templateName);
+        templateMap.put("language", Map.of("code", "pt_BR"));
+
+        if (!parameters.isEmpty()) {
+            Map<String, Object> component = Map.of(
+                    "type", "body",
+                    "parameters", parameters
+            );
+            templateMap.put("components", List.of(component));
+        }
+
+        Map<String, Object> payload = Map.of(
+                "messaging_product", "whatsapp",
+                "to", phone,
+                "type", "template",
+                "template", templateMap
+        );
+
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+
+        try {
+            ResponseEntity<String> resp = restTemplate.postForEntity(url, request, String.class);
+            log.info("[WhatsAppService] sendTemplate -> status={} body={}", resp.getStatusCodeValue(), resp.getBody());
+        } catch (Exception e) {
+            log.error("[WhatsAppService] Erro ao enviar template '{}' para {}: {}", templateName, phone, e.getMessage(), e);
         }
     }
 }
