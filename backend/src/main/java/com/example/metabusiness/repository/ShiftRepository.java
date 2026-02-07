@@ -1,6 +1,6 @@
-package com.seuprojeto.repository;
+package com.example.metabusiness.repository;
 
-import com.seuprojeto.model.Shift;
+import com.example.metabusiness.model.Shift;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 

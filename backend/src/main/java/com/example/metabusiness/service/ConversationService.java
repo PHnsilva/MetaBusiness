@@ -1,8 +1,8 @@
-package com.seuprojeto.service;
+package com.example.metabusiness.service;
 
-import com.seuprojeto.model.*;
-import com.seuprojeto.repository.ConversationRepository;
-import com.seuprojeto.repository.MessageRepository;
+import com.example.metabusiness.model.*;
+import com.example.metabusiness.repository.ConversationRepository;
+import com.example.metabusiness.repository.MessageRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;

@@ -1,6 +1,6 @@
 package com.example.metabusiness.repository;
 
-import com.seuprojeto.model.Message;
+import com.example.metabusiness.model.Message;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

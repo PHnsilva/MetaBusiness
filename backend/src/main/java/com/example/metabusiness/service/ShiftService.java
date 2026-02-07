@@ -1,7 +1,7 @@
-package com.seuprojeto.service;
+package com.example.metabusiness.service;
 
-import com.seuprojeto.model.Shift;
-import com.seuprojeto.repository.ShiftRepository;
+import com.example.metabusiness.model.Shift;
+import com.example.metabusiness.repository.ShiftRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
